@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Safora Login</title>
+
+<style>
+body {
+    margin: 0;
+    font-family: 'Segoe UI', sans-serif;
+    height: 100vh;
+    display: flex;
+    background: linear-gradient(135deg, #2ec1ea, #3b81d6);
+}
+
+/* LEFT SIDE */
+.left {
+    width: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: white;
+    padding: 50px;
+}
+
+.left-content {
+    max-width: 450px;
+}
+
+/* BRAND SECTION */
+.brand {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.brand img {
+    height: 60px;
+    width: auto;
+    object-fit: contain;
+}
+
+.brand h1 {
+    font-size: 45px;
+    margin: 0;
+}
+
+/* TEXT */
+.left p {
+    font-size: 18px;
+    line-height: 1.6;
+}
+
+/* RIGHT SIDE */
+.right {
+    width: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+/* GLASS CARD */
+.login-box {
+    width: 360px;
+    padding: 40px;
+    border-radius: 15px;
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(12px);
+    box-shadow: 0 8px 30px rgba(0,0,0,0.3);
+    color: white;
+}
+
+.login-box h2 {
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+.login-box input {
+    width: 100%;
+    padding: 12px;
+    margin-bottom: 20px;
+    border: none;
+    border-radius: 8px;
+    outline: none;
+    font-size: 14px;
+}
+
+.login-box button {
+    width: 100%;
+    padding: 12px;
+    background: rgb(250, 248, 248);
+    border: none;
+    color: #59aae5;
+    font-weight: bold;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: 0.3s;
+}
+
+.login-box button:hover {
+    background: #e6f2ff;
+}
+
+.login-box a {
+    display: block;
+    margin-top: 15px;
+    text-align: center;
+    text-decoration: none;
+    color: white;
+    font-size: 14px;
+}
+.brand img {
+    height: 110px;
+    width: auto;
+    object-fit: contain;
+    filter: drop-shadow(0 0 15px rgba(255,255,255,0.4));
+}
+.brand img {
+    display: none;
+}
+
+</style>
+</head>
+
+<body>
+
+<div class="left">
+    <div class="left-content">
+
+        <!-- LOGO + TITLE -->
+        <div class="brand">
+            <img src="{{ url_for('static', filename='logo.png') }}" 
+                 alt="Safora Logo">
+            <h1>Welcome to Safora</h1>
+        </div>
+
+        <p style="margin-top:20px;">
+        Safora is a real-time secure messaging platform developed by 
+        <strong>Siddhant Rajan</strong>, an undergraduate student at 
+        <strong>IIT Patna</strong>.
+        </p>
+
+        <p style="margin-top:25px;">
+        This project demonstrates full-stack engineering skills including:
+        </p>
+
+        <ul style="margin-top:15px; line-height:1.8;">
+            <li>Secure authentication with password hashing</li>
+            <li>Real-time private messaging using WebSockets</li>
+            <li>Online / Offline presence tracking</li>
+            <li>Typing indicators</li>
+            <li>Message delivery acknowledgments</li>
+        </ul>
+
+        <p style="margin-top:25px; font-size:15px;">
+        Built using Python, Flask, Socket.IO, SQLite, and modern UI design principles.
+        </p>
+
+    </div>
+</div>
+
+<div class="right">
+    <div class="login-box">
+        <h2>Sign In</h2>
+
+        <form method="POST">
+            <input name="username" placeholder="Username" required>
+            <input name="password" type="password" placeholder="Password" required>
+            <button>Login</button>
+        </form>
+
+        <a href="/register">Create an account</a>
+    </div>
+</div>
+
+</body>
+</html>

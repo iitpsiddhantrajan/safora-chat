@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Safora</title>
+<script src="https://cdn.socket.io/4.0.1/socket.io.min.js"></script>
+
+<style>
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    display: flex;
+    height: 100vh;
+}
+
+.sidebar {
+    width: 30%;
+    background: #aed2f0;
+    padding: 20px;
+    box-sizing: border-box;
+}
+
+.chat-area {
+    width: 70%;
+    display: flex;
+    flex-direction: column;
+    background: #e5ddd5;
+}
+
+.chat-header {
+    background: #406d89;
+    color: white;
+    padding: 15px;
+    font-weight: bold;
+}
+
+.messages {
+    flex: 1;
+    padding: 15px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+}
+
+.message {
+    padding: 10px;
+    margin: 5px;
+    max-width: 60%;
+    border-radius: 10px;
+}
+
+.sent {
+    background: #ccc797;
+    align-self: flex-end;
+}
+
+.received {
+    background: rgb(223, 216, 216);
+    align-self: flex-start;
+}
+
+.input-area {
+    display: flex;
+    padding: 10px;
+    background: #866d6d;
+}
+
+input {
+    flex: 1;
+    padding: 10px;
+    border: none;
+    border-radius: 5px;
+}
+
+button {
+    padding: 10px;
+    margin-left: 10px;
+    background: #b7e3db;
+    border: none;
+    color: white;
+    border-radius: 5px;
+}
+
+.online {
+    color: green;
+    font-weight: bold;
+}
+
+.offline {
+    color: black;
+}
+</style>
+</head>
+
+<body>
+
+<div class="sidebar">
+    <h3>Safora</h3>
+    <p>Logged in as: {{ username }}</p>
+    <a href="/logout">Logout</a>
+
+    <h3>Contacts</h3>
+
+    <ul id="contactList">
+        {% for user in users %}
+            <li id="user-{{ user.username }}"
+                onclick="selectUser('{{ user.username }}')"
+                class="offline"
+                style="cursor:pointer; padding:8px;">
+                {{ user.username }}
+            </li>
+        {% endfor %}
+    </ul>
+</div>
+
+<div class="chat-area">
+    <div class="chat-header" id="chatWith">
+        Select a user to start chat
+    </div>
+
+    <div class="messages" id="messages"></div>
+
+    <div class="input-area">
+        <input id="message" placeholder="Type a message">
+        <button onclick="sendMessage()">Send</button>
+    </div>
+</div>
+
+<script>
+var socket = io();
+var currentUser = "{{ username }}";
+var selectedUser = "";
+var typingTimeout;
+
+// Select contact
+function selectUser(user) {
+    selectedUser = user;
+
+    document.getElementById("chatWith").innerText =
+        "Chat with " + user;
+
+    document.getElementById("messages").innerHTML = "";
+
+    socket.emit("join", {
+        sender: currentUser,
+        receiver: selectedUser
+    });
+}
+
+// Send message
+function sendMessage() {
+
+    if (!selectedUser) {
+        alert("Please select a contact first.");
+        return;
+    }
+
+    var msg = document.getElementById("message").value;
+
+    if (msg.trim() === "") return;
+
+    socket.emit("private_message", {
+        sender: currentUser,
+        receiver: selectedUser,
+        message: msg
+    });
+
+    document.getElementById("message").value = "";
+}
+
+// Detect typing
+document.getElementById("message").addEventListener("input", function() {
+
+    if (!selectedUser) return;
+
+    socket.emit("typing", {
+        sender: currentUser,
+        receiver: selectedUser
+    });
+
+});
+
+// Show typing indicator
+socket.on("show_typing", function(user) {
+
+    var typingDiv = document.getElementById("typingIndicator");
+
+    if (!typingDiv) {
+        typingDiv = document.createElement("div");
+        typingDiv.id = "typingIndicator";
+        typingDiv.style.fontStyle = "italic";
+        typingDiv.style.margin = "5px";
+        document.getElementById("messages").appendChild(typingDiv);
+    }
+
+    typingDiv.innerText ="typing...";
+
+    clearTimeout(typingTimeout);
+
+    typingTimeout = setTimeout(function() {
+        var typingDiv = document.getElementById("typingIndicator");
+        if (typingDiv) typingDiv.remove();
+    }, 1500);
+});
+
+// Receive message
+socket.on("message", function(data) {
+
+    var messageDiv = document.createElement("div");
+    messageDiv.classList.add("message");
+    messageDiv.id = "msg-" + data.id;
+
+    var content = data.sender + ": " + data.message + " (" + data.time + ")";
+
+    if (data.sender === currentUser) {
+        messageDiv.classList.add("sent");
+
+        if (data.delivered) {
+            content += " ✓✓";
+        } else {
+            content += " ✓";
+        }
+
+    } else {
+        messageDiv.classList.add("received");
+
+        socket.emit("delivered", { id: data.id });
+    }
+
+    messageDiv.innerText = content;
+
+    document.getElementById("messages").appendChild(messageDiv);
+});
+
+socket.on("update_tick", function(data) {
+
+    var msgDiv = document.getElementById("msg-" + data.id);
+
+    if (msgDiv && msgDiv.classList.contains("sent")) {
+        msgDiv.innerText = msgDiv.innerText.replace("✓", "✓✓");
+    }
+
+});
+
+
+// ONLINE / OFFLINE UPDATE
+socket.on("update_users", function(users) {
+
+    users.forEach(function(username) {
+        var element = document.getElementById("user-" + username);
+        if (element) {
+            element.classList.remove("offline");
+            element.classList.add("online");
+        }
+    });
+
+    document.querySelectorAll("#contactList li").forEach(function(item) {
+        var name = item.innerText.trim();
+        if (!users.includes(name)) {
+            item.classList.remove("online");
+            item.classList.add("offline");
+        }
+    });
+});
+</script>
+
+
+</body>
+</html>
