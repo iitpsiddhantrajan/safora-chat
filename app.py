@@ -1,3 +1,6 @@
+import eventlet
+eventlet.monkey_patch()
+
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
 from flask import Flask, render_template, request, redirect, session
@@ -6,7 +9,8 @@ import sqlite3
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'secret'
-socketio = SocketIO(app)
+
+socketio = SocketIO(app, cors_allowed_origins="*")
 
 # Track online users
 online_users = {}
@@ -31,13 +35,13 @@ def create_table():
 
     db.execute("""
         CREATE TABLE IF NOT EXISTS messages (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    sender TEXT,
-    receiver TEXT,
-    message TEXT,
-    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-    delivered INTEGER DEFAULT 0
-    )
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            sender TEXT,
+            receiver TEXT,
+            message TEXT,
+            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+            delivered INTEGER DEFAULT 0
+        )
     """)
 
     db.commit()
@@ -52,7 +56,6 @@ def home():
         return redirect("/login")
     return redirect("/chat")
 
-
 @app.route("/chat")
 def chat():
     if "user" not in session:
@@ -64,12 +67,9 @@ def chat():
         (session["user"],)
     ).fetchall()
 
-    return render_template(
-        "chat.html",
-        username=session["user"],
-        users=users
-    )
-
+    return render_template("chat.html",
+                           username=session["user"],
+                           users=users)
 
 @app.route("/register", methods=["GET", "POST"])
 def register():
@@ -78,7 +78,6 @@ def register():
         password = generate_password_hash(request.form["password"])
 
         db = get_db()
-
         existing_user = db.execute(
             "SELECT * FROM users WHERE username=?",
             (username,)
@@ -96,7 +95,6 @@ def register():
         return redirect("/login")
 
     return render_template("register.html")
-
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
@@ -118,12 +116,10 @@ def login():
 
     return render_template("login.html")
 
-
 @app.route("/logout")
 def logout():
     session.clear()
     return redirect("/login")
-
 
 # ---------------- SOCKET EVENTS ---------------- #
 
@@ -134,13 +130,11 @@ def handle_connect():
         online_users[request.sid] = username
         socketio.emit("update_users", list(online_users.values()))
 
-
 @socketio.on("disconnect")
 def handle_disconnect():
     if request.sid in online_users:
         online_users.pop(request.sid)
         socketio.emit("update_users", list(online_users.values()))
-
 
 @socketio.on("join")
 def on_join(data):
@@ -159,21 +153,15 @@ def on_join(data):
     """, (sender, receiver, receiver, sender)).fetchall()
 
     for msg in messages:
+        time = msg["timestamp"][11:16]
 
-     time = msg["timestamp"][11:16]
-
-    emit(
-        "message",
-        {
+        emit("message", {
             "id": msg["id"],
             "sender": msg["sender"],
             "message": msg["message"],
             "time": time,
             "delivered": msg["delivered"]
-        },
-        room=request.sid
-    )
-
+        }, room=request.sid)
 
 @socketio.on("private_message")
 def private_message(data):
@@ -193,17 +181,14 @@ def private_message(data):
     message_id = cursor.lastrowid
     time = datetime.now().strftime("%H:%M")
 
-    emit(
-        "message",
-        {
-            "id": message_id,
-            "sender": sender,
-            "message": message,
-            "time": time
-        },
-        room=room
-    )
-    
+    emit("message", {
+        "id": message_id,
+        "sender": sender,
+        "message": message,
+        "time": time,
+        "delivered": 0
+    }, room=room)
+
 @socketio.on("delivered")
 def delivered(data):
     message_id = data["id"]
@@ -217,20 +202,13 @@ def delivered(data):
 
     emit("update_tick", {"id": message_id}, broadcast=True)
 
-# ---------------- TYPING INDICATOR ---------------- #
-
 @socketio.on("typing")
 def typing(data):
     sender = data["sender"]
     receiver = data["receiver"]
 
     room = "_".join(sorted([sender, receiver]))
-
     emit("show_typing", sender, room=room, include_self=False)
-
-socketio = SocketIO(app, cors_allowed_origins="*")
-
 
 if __name__ == "__main__":
     socketio.run(app, host="0.0.0.0", port=5000)
-
