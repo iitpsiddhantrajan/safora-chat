@@ -1,7 +1,10 @@
 <!DOCTYPE html>
 <html>
 <head>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
 <title>Safora</title>
+
 <script src="https://cdn.socket.io/4.0.1/socket.io.min.js"></script>
 
 <style>
@@ -88,6 +91,42 @@ button {
 .offline {
     color: black;
 }
+/* ================= MOBILE RESPONSIVE ================= */
+
+@media screen and (max-width: 768px) {
+
+    body {
+        flex-direction: column;
+    }
+
+    .sidebar {
+        width: 100%;
+        height: 35vh;
+        overflow-y: auto;
+    }
+
+    .chat-area {
+        width: 100%;
+        height: 65vh;
+    }
+
+    .chat-header {
+        text-align: center;
+    }
+
+    .message {
+        max-width: 80%;
+    }
+
+    .input-area {
+        padding: 8px;
+    }
+
+    input {
+        font-size: 16px;  /* prevents zoom on mobile */
+    }
+}
+
 </style>
 </head>
 
