@@ -245,6 +245,12 @@ socket.on("show_typing", function(user) {
 // Receive message
 socket.on("message", function(data) {
 
+    // Determine which room this message belongs to
+    let messageRoom = [data.sender, data.receiver].sort().join("_");
+
+    // Only render if it matches current open room
+    if (messageRoom !== currentRoom) return;
+
     // Prevent duplicate rendering
     if (document.getElementById("msg-" + data.id)) return;
 
@@ -253,7 +259,10 @@ socket.on("message", function(data) {
     messageDiv.id = "msg-" + data.id;
 
     let date = new Date(data.timestamp);
-    let formattedTime = date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+    let formattedTime = date.toLocaleTimeString([], {
+        hour: '2-digit',
+        minute: '2-digit'
+    });
 
     var content = data.sender + ": " + data.message + " (" + formattedTime + ")";
 
@@ -271,7 +280,6 @@ socket.on("message", function(data) {
     }
 
     messageDiv.innerText = content;
-
     document.getElementById("messages").appendChild(messageDiv);
 
     document.getElementById("messages").scrollTop =
