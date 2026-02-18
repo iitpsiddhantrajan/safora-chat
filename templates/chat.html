@@ -245,17 +245,6 @@ socket.on("show_typing", function(user) {
 // Receive message
 socket.on("message", function(data) {
 
-    // Only render if this message belongs to current open chat
-    if (
-        !selectedUser ||
-        !(
-            (data.sender === currentUser && selectedUser === data.receiver) ||
-            (data.sender === selectedUser && currentUser === data.receiver)
-        )
-    ) {
-        return;
-    }
-
     // Prevent duplicate rendering
     if (document.getElementById("msg-" + data.id)) return;
 
