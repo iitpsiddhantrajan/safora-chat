@@ -179,12 +179,13 @@ def private_message(data):
     message_id = cursor.lastrowid
 
     emit("message", {
-        "id": message_id,
-        "sender": sender,
-        "message": message,
-        "timestamp": utc_now,
-        "delivered": 0
-    }, room=room)
+    "id": message_id,
+    "sender": sender,
+    "receiver": receiver,
+    "message": message,
+    "timestamp": utc_now,
+    "delivered": 0
+}, room=room)
 
 @socketio.on("delivered")
 def delivered(data):

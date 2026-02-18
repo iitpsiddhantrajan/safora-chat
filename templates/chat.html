@@ -245,6 +245,17 @@ socket.on("show_typing", function(user) {
 // Receive message
 socket.on("message", function(data) {
 
+    // Only render if this message belongs to current open chat
+    if (
+        !selectedUser ||
+        !(
+            (data.sender === currentUser && selectedUser === data.receiver) ||
+            (data.sender === selectedUser && currentUser === data.receiver)
+        )
+    ) {
+        return;
+    }
+
     // Prevent duplicate rendering
     if (document.getElementById("msg-" + data.id)) return;
 
@@ -252,7 +263,6 @@ socket.on("message", function(data) {
     messageDiv.classList.add("message");
     messageDiv.id = "msg-" + data.id;
 
-    // Convert UTC timestamp to local time
     let date = new Date(data.timestamp);
     let formattedTime = date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
 
@@ -260,17 +270,10 @@ socket.on("message", function(data) {
 
     if (data.sender === currentUser) {
         messageDiv.classList.add("sent");
-
-        if (data.delivered) {
-            content += " ✓✓";
-        } else {
-            content += " ✓";
-        }
-
+        content += data.delivered ? " ✓✓" : " ✓";
     } else {
         messageDiv.classList.add("received");
 
-        // Notify delivery
         socket.emit("delivered", {
             id: data.id,
             sender: data.sender,
