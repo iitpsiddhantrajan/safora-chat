@@ -12,13 +12,12 @@ app.config['SECRET_KEY'] = 'secret'
 
 socketio = SocketIO(app, cors_allowed_origins="*")
 
-# Track online users
 online_users = {}
 
 # ---------------- DATABASE ---------------- #
 
 def get_db():
-    conn = sqlite3.connect("chat.db")
+    conn = sqlite3.connect("chat.db", check_same_thread=False)
     conn.row_factory = sqlite3.Row
     return conn
 
@@ -39,7 +38,7 @@ def create_table():
             sender TEXT,
             receiver TEXT,
             message TEXT,
-            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+            timestamp TEXT,
             delivered INTEGER DEFAULT 0
         )
     """)
@@ -126,15 +125,14 @@ def logout():
 @socketio.on("connect")
 def handle_connect():
     if "user" in session:
-        username = session["user"]
-        online_users[request.sid] = username
-        socketio.emit("update_users", list(online_users.values()))
+        online_users[request.sid] = session["user"]
+        socketio.emit("update_users", list(set(online_users.values())))
 
 @socketio.on("disconnect")
 def handle_disconnect():
     if request.sid in online_users:
         online_users.pop(request.sid)
-        socketio.emit("update_users", list(online_users.values()))
+        socketio.emit("update_users", list(set(online_users.values())))
 
 @socketio.on("join")
 def on_join(data):
@@ -153,13 +151,11 @@ def on_join(data):
     """, (sender, receiver, receiver, sender)).fetchall()
 
     for msg in messages:
-        time = msg["timestamp"][11:16]
-
         emit("message", {
             "id": msg["id"],
             "sender": msg["sender"],
             "message": msg["message"],
-            "time": time,
+            "timestamp": msg["timestamp"],
             "delivered": msg["delivered"]
         }, room=request.sid)
 
@@ -171,36 +167,38 @@ def private_message(data):
 
     room = "_".join(sorted([sender, receiver]))
 
+    utc_now = datetime.utcnow().isoformat()
+
     db = get_db()
     cursor = db.execute(
-        "INSERT INTO messages (sender, receiver, message) VALUES (?, ?, ?)",
-        (sender, receiver, message)
+        "INSERT INTO messages (sender, receiver, message, timestamp, delivered) VALUES (?, ?, ?, ?, 0)",
+        (sender, receiver, message, utc_now)
     )
     db.commit()
 
     message_id = cursor.lastrowid
-    time = datetime.now().strftime("%H:%M")
 
     emit("message", {
         "id": message_id,
         "sender": sender,
         "message": message,
-        "time": time,
+        "timestamp": utc_now,
         "delivered": 0
     }, room=room)
 
 @socketio.on("delivered")
 def delivered(data):
     message_id = data["id"]
+    sender = data["sender"]
+    receiver = data["receiver"]
+
+    room = "_".join(sorted([sender, receiver]))
 
     db = get_db()
-    db.execute(
-        "UPDATE messages SET delivered=1 WHERE id=?",
-        (message_id,)
-    )
+    db.execute("UPDATE messages SET delivered=1 WHERE id=?", (message_id,))
     db.commit()
 
-    emit("update_tick", {"id": message_id}, broadcast=True)
+    emit("update_tick", {"id": message_id}, room=room)
 
 @socketio.on("typing")
 def typing(data):

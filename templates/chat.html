@@ -194,7 +194,6 @@ function sendMessage() {
     }
 
     var msg = document.getElementById("message").value;
-
     if (msg.trim() === "") return;
 
     socket.emit("private_message", {
@@ -221,6 +220,8 @@ document.getElementById("message").addEventListener("input", function() {
 // Show typing indicator
 socket.on("show_typing", function(user) {
 
+    if (user !== selectedUser) return;
+
     var typingDiv = document.getElementById("typingIndicator");
 
     if (!typingDiv) {
@@ -231,7 +232,7 @@ socket.on("show_typing", function(user) {
         document.getElementById("messages").appendChild(typingDiv);
     }
 
-    typingDiv.innerText ="typing...";
+    typingDiv.innerText = user + " is typing...";
 
     clearTimeout(typingTimeout);
 
@@ -244,11 +245,18 @@ socket.on("show_typing", function(user) {
 // Receive message
 socket.on("message", function(data) {
 
+    // Prevent duplicate rendering
+    if (document.getElementById("msg-" + data.id)) return;
+
     var messageDiv = document.createElement("div");
     messageDiv.classList.add("message");
     messageDiv.id = "msg-" + data.id;
 
-    var content = data.sender + ": " + data.message + " (" + data.time + ")";
+    // Convert UTC timestamp to local time
+    let date = new Date(data.timestamp);
+    let formattedTime = date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+
+    var content = data.sender + ": " + data.message + " (" + formattedTime + ")";
 
     if (data.sender === currentUser) {
         messageDiv.classList.add("sent");
@@ -262,43 +270,48 @@ socket.on("message", function(data) {
     } else {
         messageDiv.classList.add("received");
 
-        socket.emit("delivered", { id: data.id });
+        // Notify delivery
+        socket.emit("delivered", {
+            id: data.id,
+            sender: data.sender,
+            receiver: currentUser
+        });
     }
 
     messageDiv.innerText = content;
 
     document.getElementById("messages").appendChild(messageDiv);
+
+    document.getElementById("messages").scrollTop =
+        document.getElementById("messages").scrollHeight;
 });
 
+// Update ticks safely
 socket.on("update_tick", function(data) {
 
     var msgDiv = document.getElementById("msg-" + data.id);
 
     if (msgDiv && msgDiv.classList.contains("sent")) {
-        msgDiv.innerText = msgDiv.innerText.replace("✓", "✓✓");
+        msgDiv.innerText = msgDiv.innerText.replace(" ✓", " ✓✓");
     }
 
 });
 
-
-// ONLINE / OFFLINE UPDATE
+// Online / Offline
 socket.on("update_users", function(users) {
-
-    users.forEach(function(username) {
-        var element = document.getElementById("user-" + username);
-        if (element) {
-            element.classList.remove("offline");
-            element.classList.add("online");
-        }
-    });
 
     document.querySelectorAll("#contactList li").forEach(function(item) {
         var name = item.innerText.trim();
-        if (!users.includes(name)) {
+
+        if (users.includes(name)) {
+            item.classList.remove("offline");
+            item.classList.add("online");
+        } else {
             item.classList.remove("online");
             item.classList.add("offline");
         }
     });
+
 });
 </script>
 
