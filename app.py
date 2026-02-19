@@ -4,7 +4,7 @@ eventlet.monkey_patch()
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
 from flask import Flask, render_template, request, redirect, session
-from flask_socketio import SocketIO, join_room, emit
+from flask_socketio import SocketIO, join_room, leave_room, emit
 import sqlite3
 
 app = Flask(__name__)
@@ -152,12 +152,13 @@ def on_join(data):
 
     for msg in messages:
         emit("message", {
-            "id": msg["id"],
-            "sender": msg["sender"],
-            "message": msg["message"],
-            "timestamp": msg["timestamp"],
-            "delivered": msg["delivered"]
-        }, room=request.sid)
+    "id": msg["id"],
+    "sender": msg["sender"],
+    "receiver": msg["receiver"],  # ← ADD THIS
+    "message": msg["message"],
+    "timestamp": msg["timestamp"],
+    "delivered": msg["delivered"]
+}, room=request.sid)
 
 @socketio.on("private_message")
 def private_message(data):
@@ -208,6 +209,11 @@ def typing(data):
 
     room = "_".join(sorted([sender, receiver]))
     emit("show_typing", sender, room=room, include_self=False)
+
+@socketio.on("leave")
+def on_leave(data):
+    room = data["room"]
+    leave_room(room)
 
 if __name__ == "__main__":
     socketio.run(app, host="0.0.0.0", port=5000)

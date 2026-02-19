@@ -168,11 +168,21 @@ button {
 var socket = io();
 var currentUser = "{{ username }}";
 var selectedUser = "";
+var currentRoom = null;
 var typingTimeout;
 
 // Select contact
 function selectUser(user) {
+
+    // Leave old room first
+    if (currentRoom) {
+        socket.emit("leave", { room: currentRoom });
+    }
+
     selectedUser = user;
+
+    // Create new room
+    currentRoom = [currentUser, selectedUser].sort().join("_");
 
     document.getElementById("chatWith").innerText =
         "Chat with " + user;
@@ -292,7 +302,10 @@ socket.on("update_tick", function(data) {
     var msgDiv = document.getElementById("msg-" + data.id);
 
     if (msgDiv && msgDiv.classList.contains("sent")) {
-        msgDiv.innerText = msgDiv.innerText.replace(" ✓", " ✓✓");
+
+        if (!msgDiv.innerText.includes("✓✓")) {
+            msgDiv.innerText = msgDiv.innerText.replace(" ✓", " ✓✓");
+        }
     }
 
 });
