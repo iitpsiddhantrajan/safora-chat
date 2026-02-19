@@ -1,6 +1,3 @@
-import eventlet
-eventlet.monkey_patch()
-
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
 from flask import Flask, render_template, request, redirect, session
@@ -11,7 +8,7 @@ import sqlite3
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'secret'
 
-socketio = SocketIO(app, cors_allowed_origins="*")
+socketio = SocketIO(app, cors_allowed_origins="*", manage_session=True)
 
 online_users = {}
 
@@ -201,25 +198,35 @@ def private_message(data):
 
 @socketio.on("delivered")
 def delivered(data):
-    message_id = data["id"]
-    sender = data["sender"]
-    receiver = data["receiver"]
 
-    room = "_".join(sorted([sender, receiver]))
+    if "user" not in session:
+        return
+
+    message_id = data["id"]
 
     db = get_db()
     db.execute("UPDATE messages SET delivered=1 WHERE id=?", (message_id,))
     db.commit()
 
-    emit("update_tick", {"id": message_id}, room=room)
+    emit("update_tick", {
+        "id": message_id
+    }, broadcast=True)
 
 @socketio.on("typing")
 def typing(data):
-    sender = data["sender"]
+
+    if "user" not in session:
+        return
+
+    sender = session["user"]  # 🔥 TRUST SERVER
     receiver = data["receiver"]
 
     room = "_".join(sorted([sender, receiver]))
-    emit("show_typing", sender, room=room, include_self=False)
+
+    emit("show_typing", {
+        "sender": sender,
+        "receiver": receiver
+    }, room=room, include_self=False)
 
 @socketio.on("leave")
 def on_leave(data):

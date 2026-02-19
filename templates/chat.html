@@ -231,9 +231,9 @@ document.getElementById("message").addEventListener("input", function() {
 });
 
 // Show typing indicator
-socket.on("show_typing", function(user) {
+socket.on("show_typing", function(data) {
 
-    if (user !== selectedUser) return;
+    if (data.sender !== selectedUser) return;
 
     var typingDiv = document.getElementById("typingIndicator");
 
@@ -286,12 +286,8 @@ socket.on("message", function(data) {
         messageDiv.classList.add("received");
 
         socket.emit("delivered", {
-            id: data.id,
-            sender: data.sender,
-            receiver: currentUser
-        });
-    }
-
+    id: data.id
+});
     messageDiv.innerText = content;
     document.getElementById("messages").appendChild(messageDiv);
 
