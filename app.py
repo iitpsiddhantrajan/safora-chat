@@ -5,6 +5,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
 from flask import Flask, render_template, request, redirect, session
 from flask_socketio import SocketIO, join_room, leave_room, emit
+from flask import request
 import sqlite3
 
 app = Flask(__name__)
@@ -136,7 +137,11 @@ def handle_disconnect():
 
 @socketio.on("join")
 def on_join(data):
-    sender = data["sender"]
+
+    if "user" not in session:
+        return
+
+    sender = session["user"]   # 🔥 ALWAYS TRUST SESSION
     receiver = data["receiver"]
 
     room = "_".join(sorted([sender, receiver]))
@@ -152,17 +157,22 @@ def on_join(data):
 
     for msg in messages:
         emit("message", {
-    "id": msg["id"],
-    "sender": msg["sender"],
-    "receiver": msg["receiver"],  # ← ADD THIS
-    "message": msg["message"],
-    "timestamp": msg["timestamp"],
-    "delivered": msg["delivered"]
-}, room=request.sid)
+            "id": msg["id"],
+            "sender": msg["sender"],
+            "receiver": msg["receiver"],
+            "message": msg["message"],
+            "timestamp": msg["timestamp"],
+            "delivered": msg["delivered"]
+        }, room=request.sid)
+
 
 @socketio.on("private_message")
 def private_message(data):
-    sender = data["sender"]
+
+    if "user" not in session:
+        return
+
+    sender = session["user"]   # 🔥 NEVER trust frontend
     receiver = data["receiver"]
     message = data["message"]
 
@@ -180,13 +190,14 @@ def private_message(data):
     message_id = cursor.lastrowid
 
     emit("message", {
-    "id": message_id,
-    "sender": sender,
-    "receiver": receiver,
-    "message": message,
-    "timestamp": utc_now,
-    "delivered": 0
-}, room=room)
+        "id": message_id,
+        "sender": sender,
+        "receiver": receiver,
+        "message": message,
+        "timestamp": utc_now,
+        "delivered": 0
+    }, room=room)
+
 
 @socketio.on("delivered")
 def delivered(data):

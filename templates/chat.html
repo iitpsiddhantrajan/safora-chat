@@ -174,15 +174,18 @@ var typingTimeout;
 // Select contact
 function selectUser(user) {
 
-    // Leave old room first
+    let newRoom = [currentUser, user].sort().join("_");
+
+    // If already in same room → do nothing
+    if (newRoom === currentRoom) return;
+
+    // Leave old room
     if (currentRoom) {
         socket.emit("leave", { room: currentRoom });
     }
 
     selectedUser = user;
-
-    // Create new room
-    currentRoom = [currentUser, selectedUser].sort().join("_");
+    currentRoom = newRoom;
 
     document.getElementById("chatWith").innerText =
         "Chat with " + user;
@@ -198,7 +201,7 @@ function selectUser(user) {
 // Send message
 function sendMessage() {
 
-    if (!selectedUser) {
+    if (!selectedUser || !currentRoom) {
         alert("Please select a contact first.");
         return;
     }
@@ -218,7 +221,7 @@ function sendMessage() {
 // Detect typing
 document.getElementById("message").addEventListener("input", function() {
 
-    if (!selectedUser) return;
+    if (!selectedUser || !currentRoom) return;
 
     socket.emit("typing", {
         sender: currentUser,
